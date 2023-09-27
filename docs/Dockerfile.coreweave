@@ -1,0 +1,22 @@
+FROM ghcr.io/coreweave/ml-containers/nightly-torch-extras:9faf4d7-nccl-2023.09.05.05-cuda12.1.1-nccl2.18.3-1-torch2.1.0a0-vision0.16.0a0-audio2.2.0a0-flash_attn2.0.2
+ENV DEBIAN_FRONTEND=noninteractive
+
+#Install core packages
+RUN mkdir /src/optimum-habana
+COPY . /src/optimum-habana
+RUN apt-get update && apt-get install -y \
+      curl git apt-utils ssh ca-certificates \
+      tmux nano vim sudo bash rsync htop wget unzip \
+      ninja-build tini \
+    && apt-get clean
+RUN pip3 install git+https://github.com/huggingface/transformers@6ae71ec \
+      datasets \
+      wandb
+RUN git clone https://github.com/NVIDIA/TransformerEngine.git && \
+      git checkout a29e2e1 && \
+      cd TransformerEngine && \
+      git submodule update --init --recursive && \
+      chmod 755 .eggs/cmake-3.27.5-py3.8-linux-x86_64.egg/cmake/data/bin/cmake && \
+      pip3 build bdist_wheel && \
+      pip3 install dist/transformer_engine*.whl && \
+      rm -rf TransformerEngine

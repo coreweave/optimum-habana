@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: optimum-habana
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: gpu.nvidia.com/class
+            operator: In
+            values:
+            - H100_NVLINK_80GB
+  containers:
+  - env:
+      - name: PYTHONBUFFERED
+        value: "1"
+
+      - name: NUM_GPUS
+        value: "8"
+
+      # 54 for 80GB GPUs
+      # 27 for 48GB GPUs
+      - name: BATCH_SZ
+        value: "54"
+
+      - name: SKIP_LOADER
+        value: "1"
+
+      # Uncomment the following, and insert your WandB key
+      # if you want run reporting.
+      #- name: WANDB_API_KEY
+      #  value: your_api_key
+
+      # Comment out the following if you uncomment above.
+      - name: WANDB_MODE
+        value: "offline"
+
+    command: ["/bin/bash"]
+    args: ["-c", "cd /src/optimum-habana/examples/contrastive-image-text && ./run.sh $NUM_GPUS $BATCH_SZ"]
+    image: wesbrown18/optimum-habana:rc0
+    imagePullPolicy: Always
+    name: optimum-habana-container
+    resources:
+      limits:
+        cpu: "48"
+        memory: 700Gi
+        nvidia.com/gpu: "8"
+        ephemeral-storage: 500Gi
+      requests:
+        cpu: "48"
+        memory: 700Gi
+        nvidia.com/gpu: "8"
+        ephemeral-storage: 500Gi
+    tty: true
+    volumeMounts:
+    - name: dshm
+      mountPath: /dev/shm
+  dnsPolicy: ClusterFirst
+  imagePullSecrets:
+  - name: regcred
+  restartPolicy: Always
+  schedulerName: default-scheduler
+  securityContext: {}
+  terminationGracePeriodSeconds: 10
+  volumes:
+  - emptyDir:
+      medium: Memory
+    name: dshm
