@@ -2,7 +2,7 @@ FROM ghcr.io/coreweave/ml-containers/nightly-torch-extras:9faf4d7-nccl-2023.09.0
 ENV DEBIAN_FRONTEND=noninteractive
 
 #Install core packages
-RUN mkdir /src/optimum-habana
+RUN mkdir -p /src/optimum-habana
 COPY . /src/optimum-habana
 RUN apt-get update && apt-get install -y \
       curl git apt-utils ssh ca-certificates \
@@ -10,13 +10,19 @@ RUN apt-get update && apt-get install -y \
       ninja-build tini \
     && apt-get clean
 RUN pip3 install git+https://github.com/huggingface/transformers@6ae71ec \
-      datasets \
-      wandb
+      git+https://github.com/huggingface/accelerate@80da9cf \
+      datasets==2.14.5 \
+      wandb==0.15.1
+WORKDIR /usr/local/lib/python3.8/dist-packages/transformers
+RUN patch -p3 </src/optimum-habana/docs/transformers.patch
+WORKDIR /src
 RUN git clone https://github.com/NVIDIA/TransformerEngine.git && \
-      git checkout a29e2e1 && \
       cd TransformerEngine && \
+      git checkout a29e2e1 && \
       git submodule update --init --recursive && \
+      patch -p1 </src/optimum-habana/docs/te_layernorm.patch && \
+      python3 setup.py bdist_wheel || true && \
       chmod 755 .eggs/cmake-3.27.5-py3.8-linux-x86_64.egg/cmake/data/bin/cmake && \
-      pip3 build bdist_wheel && \
+      python3 setup.py bdist_wheel || true && \
       pip3 install dist/transformer_engine*.whl && \
       rm -rf TransformerEngine
