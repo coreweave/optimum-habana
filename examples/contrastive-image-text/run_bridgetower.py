@@ -28,7 +28,7 @@ import datasets
 import torch
 import transformers
 from datasets import load_dataset
-from habana_dataloader_trainer import HabanaDataloaderTrainer
+#from habana_dataloader_trainer import HabanaDataloaderTrainer
 from torchvision.io import ImageReadMode, read_image
 from torchvision.transforms import CenterCrop, ConvertImageDtype, Normalize, Resize
 from torchvision.transforms.functional import InterpolationMode, to_grayscale, to_tensor
@@ -42,8 +42,11 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 
-from optimum.habana import GaudiConfig, GaudiTrainer, GaudiTrainingArguments
-from optimum.habana.utils import set_seed
+#from optimum.habana import GaudiConfig, GaudiTrainer, GaudiTrainingArguments
+#from optimum.habana.utils import set_seed
+
+from transformers import Trainer, TrainingArguments
+from transformers import set_seed
 
 
 try:
@@ -57,8 +60,8 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Will error if the minimal version of Transformers and Optimum Habana are not installed. Remove at your own risks.
-check_min_version("4.33.0")
-check_optimum_habana_min_version("1.7.5")
+check_min_version("4.32.0")
+check_optimum_habana_min_version("1.7.2")
 
 require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/contrastive-image-text/requirements.txt")
 
@@ -222,7 +225,7 @@ class Transform(torch.nn.Module):
     def __init__(self, image_size, mean, std):
         super().__init__()
         self.transforms = torch.nn.Sequential(
-            Resize([image_size], interpolation=InterpolationMode.BICUBIC),
+            Resize([image_size], interpolation=InterpolationMode.BICUBIC, antialias=True),
             CenterCrop(image_size),
             ConvertImageDtype(torch.float),
             Normalize(mean, std),
@@ -253,7 +256,7 @@ def main():
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, GaudiTrainingArguments))
+    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
@@ -290,15 +293,15 @@ def main():
     transformers.utils.logging.enable_default_handler()
     transformers.utils.logging.enable_explicit_format()
 
-    gaudi_config = GaudiConfig.from_pretrained(
-        training_args.gaudi_config_name,
-        cache_dir=model_args.cache_dir,
-        revision=model_args.model_revision,
-        use_auth_token=True if model_args.use_auth_token else None,
-    )
+    #gaudi_config = GaudiConfig.from_pretrained(
+    #    training_args.gaudi_config_name,
+    #    cache_dir=model_args.cache_dir,
+    #    revision=model_args.model_revision,
+    #    use_auth_token=True if model_args.use_auth_token else None,
+    #)
 
     # Log on each process the small summary:
-    mixed_precision = training_args.bf16 or gaudi_config.use_torch_autocast or gaudi_config.use_habana_mixed_precision
+    mixed_precision = training_args.bf16 #or gaudi_config.use_torch_autocast or gaudi_config.use_habana_mixed_precision
     logger.warning(
         f"Process rank: {training_args.local_rank}, device: {training_args.device}, "
         + f"distributed training: {training_args.parallel_mode.value == 'distributed'}, "
@@ -573,15 +576,16 @@ def main():
             test_dataset.set_transform(transform_images)
 
     # 8. Initalize our trainer
-    trainer_cls = HabanaDataloaderTrainer if data_args.mediapipe_dataloader else GaudiTrainer
+    # trainer_cls = HabanaDataloaderTrainer if data_args.mediapipe_dataloader else GaudiTrainer
+    trainer_cls = Trainer
     trainer = trainer_cls(
         model=model,
-        gaudi_config=gaudi_config,
         args=training_args,
         train_dataset=train_dataset if training_args.do_train else None,
         eval_dataset=eval_dataset if training_args.do_eval else None,
         data_collator=collate_fn,
     )
+        #gaudi_config=gaudi_config,
 
     # 9. Training
     if training_args.do_train:
