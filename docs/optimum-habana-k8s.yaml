@@ -39,7 +39,7 @@ spec:
 
     command: ["/bin/bash"]
     args: ["-c", "cd /src/optimum-habana/examples/contrastive-image-text && ./run.sh $NUM_GPUS $BATCH_SZ"]
-    image: wesbrown18/optimum-habana:rc0
+    image: wesbrown18/optimum-habana:rc7
     imagePullPolicy: Always
     name: optimum-habana-container
     resources:
